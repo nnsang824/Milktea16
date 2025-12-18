@@ -1,0 +1,59 @@
+@model N16_MilkTea.Models.DoUong
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thêm món mới</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h4>Thêm đồ uống mới</h4>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="CreateProduct" method="post" enctype="multipart/form-data">
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Tên đồ uống</label>
+                                <input asp-for="TenDoUong" class="form-control" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Danh mục</label>
+                                <select asp-for="MaDanhMuc" class="form-select" required>
+                                    @foreach(var dm in ViewBag.DanhMucs) {
+                                        <option value="@dm.MaDanhMuc">@dm.TenDanhMuc</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Giá bán (Size S)</label>
+                                <input type="number" name="GiaSizeS" class="form-control" placeholder="Ví dụ: 30000" required />
+                                <div class="form-text">Hệ thống sẽ tự động cộng thêm 6k cho Size M và 12k cho Size L.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Hình ảnh</label>
+                                <input type="file" name="imageFile" class="form-control" accept="image/*" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mô tả</label>
+                                <textarea asp-for="MoTa" class="form-control" rows="3"></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100">Lưu sản phẩm</button>
+                            <a href="/Admin/Products" class="btn btn-secondary w-100 mt-2">Hủy</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

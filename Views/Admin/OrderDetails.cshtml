@@ -1,0 +1,95 @@
+@model N16_MilkTea.Models.DonHang
+
+@{
+    Layout = null; // Tạm thời không dùng layout
+    decimal tongTien = 0;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chi tiết đơn hàng #@Model.MaDonHang</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <a href="/Admin/Orders" class="btn btn-outline-secondary mb-3">&larr; Quay lại danh sách</a>
+        
+        <div class="card shadow">
+            <div class="card-header bg-info text-white d-flex justify-content-between">
+                <h4 class="mb-0">Chi tiết đơn hàng #@Model.MaDonHang</h4>
+                <span>Ngày đặt: @Model.NgayDat?.ToString("dd/MM/yyyy HH:mm")</span>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-secondary">
+                    <strong>Thông tin giao hàng:</strong> <br />
+                    @Model.GhiChu
+                </div>
+
+                <form asp-action="UpdateStatus" method="post" class="mb-4 border p-3 rounded bg-white">
+                    <input type="hidden" name="MaDonHang" value="@Model.MaDonHang" />
+                    <div class="row align-items-center">
+                        <div class="col-auto"><label class="fw-bold">Cập nhật trạng thái:</label></div>
+                        <div class="col-auto">
+                            <select name="TrangThai" class="form-select">
+                                <option value="0" selected="@(Model.TinhTrangGiaoHang == 0)">Mới đặt / Đang xử lý</option>
+                                <option value="1" selected="@(Model.TinhTrangGiaoHang == 1)">Đã giao hàng thành công</option>
+                                <option value="-1" selected="@(Model.TinhTrangGiaoHang == -1)">Hủy đơn hàng</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary">Cập nhật</button>
+                        </div>
+                    </div>
+                </form>
+
+                <h5>Danh sách món:</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Tên món</th>
+                            <th>Size</th>
+                            <th>Topping</th>
+                            <th>Đơn giá lúc mua</th>
+                            <th>Số lượng</th>
+                            <th>Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var chitiet in Model.ChiTietDonHangs)
+                        {
+                            // Tính tiền món
+                            decimal giaMon = chitiet.DonGia; // Giá đã bao gồm size từ code AddToCart
+                            
+                            // Tính tiền topping
+                            decimal tienTopping = chitiet.ChiTietToppings.Sum(t => t.DonGia * t.SoLuong);
+                            
+                            // Tổng dòng này
+                            decimal thanhTien = (giaMon + tienTopping) * chitiet.SoLuong;
+                            tongTien += thanhTien;
+
+                            // Lấy tên topping
+                            var toppings = string.Join(", ", chitiet.ChiTietToppings.Select(t => t.MaToppingNavigation.TenTopping));
+
+                            <tr>
+                                <td>@chitiet.MaDoUongNavigation.TenDoUong</td>
+                                <td>@chitiet.MaSizeNavigation.TenSize</td>
+                                <td>@toppings</td>
+                                <td>@giaMon.ToString("#,##0")</td>
+                                <td>@chitiet.SoLuong</td>
+                                <td class="fw-bold">@thanhTien.ToString("#,##0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-success">
+                            <td colspan="5" class="text-end fw-bold">TỔNG CỘNG:</td>
+                            <td class="fw-bold text-danger fs-5">@tongTien.ToString("#,##0") đ</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

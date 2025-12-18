@@ -1,0 +1,44 @@
+@{
+    Layout = null; // Trang login không dùng layout chung của khách hàng
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Đăng nhập quản trị</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4>ADMIN LOGIN</h4>
+                    </div>
+                    <div class="card-body">
+                        @if (ViewBag.Error != null)
+                        {
+                            <div class="alert alert-danger">@ViewBag.Error</div>
+                        }
+                        <form asp-action="Login" method="post">
+                            <div class="mb-3">
+                                <label>Username</label>
+                                <input type="text" name="username" class="form-control" required />
+                            </div>
+                            <div class="mb-3">
+                                <label>Password</label>
+                                <input type="password" name="password" class="form-control" required />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="/" class="text-decoration-none">&larr; Về trang bán hàng</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

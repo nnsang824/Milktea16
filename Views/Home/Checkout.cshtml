@@ -1,0 +1,83 @@
+@model List<N16_MilkTea.ViewModels.CartItem>
+@{ ViewData["Title"] = "Thanh toán"; }
+
+<div class="container py-5">
+    @if(ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white">
+                    <h4 class="text-success mb-0">Thông tin giao hàng</h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Checkout" method="post">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Họ tên *</label>
+                                <input type="text" name="HoTen" class="form-control" value="@ViewBag.HoTen" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Số điện thoại *</label>
+                                <input type="text" name="DienThoai" class="form-control" value="@ViewBag.DienThoai" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email nhận hóa đơn *</label>
+                            <input type="email" name="Email" class="form-control" 
+                                   value="@ViewBag.Email" 
+                                   placeholder="example@gmail.com" required>
+                            <div class="form-text text-muted">Chúng tôi sẽ gửi thông tin đơn hàng qua email này.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Địa chỉ nhận hàng *</label>
+                            <textarea name="DiaChi" class="form-control" rows="2" required>@ViewBag.DiaChi</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ghi chú thêm</label>
+                            <input type="text" name="GhiChu" class="form-control" placeholder="Ví dụ: Ít đá, để chuông cửa...">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                            XÁC NHẬN VÀ THANH TOÁN
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Đơn hàng của bạn</h5>
+                    <ul class="list-group mb-3">
+                        @foreach (var item in Model)
+                        {
+                            <li class="list-group-item d-flex justify-content-between lh-sm">
+                                <div>
+                                    <h6 class="my-0">@item.TenDoUong <small>(@item.TenSize)</small></h6>
+                                    @if(item.Toppings.Any())
+                                    {
+                                        <small class="text-muted" style="font-size: 0.8em">
+                                            + @string.Join(", ", item.Toppings.Select(t => t.TenTopping))
+                                        </small>
+                                    }
+                                </div>
+                                <span class="text-muted">x @item.SoLuong</span>
+                            </li>
+                        }
+                        <li class="list-group-item d-flex justify-content-between bg-white mt-2">
+                            <span class="fw-bold">TỔNG CỘNG</span>
+                            <strong class="text-danger fs-5">@ViewBag.TongTien.ToString("#,##0") đ</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

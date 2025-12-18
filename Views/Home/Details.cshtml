@@ -1,0 +1,135 @@
+﻿@model N16_MilkTea.Models.DoUong
+
+@{
+    ViewData["Title"] = Model.TenDoUong;
+    // Lấy danh sách topping từ Controller truyền sang
+    var listTopping = ViewBag.Toppings as List<N16_MilkTea.Models.Topping>;
+}
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Menu</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.TenDoUong</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-5">
+            <img src="~/images/@Model.HinhAnh" class="img-fluid rounded shadow" 
+                 alt="@Model.TenDoUong" 
+                 onerror="this.src='https://placehold.co/400x400?text=No+Image'">
+        </div>
+
+        <div class="col-md-7">
+            <h2 class="fw-bold text-success">@Model.TenDoUong</h2>
+            <p class="text-muted">@Model.MoTa</p>
+            <hr />
+
+            <form asp-action="AddToCart" method="post" id="form-order">
+                <input type="hidden" name="MaDoUong" value="@Model.MaDoUong" />
+
+                <h5 class="mt-4"><i class="bi bi-cup-straw"></i> Chọn Size:</h5>
+                <div class="d-flex gap-3 mb-3">
+                    @foreach (var sizeOption in Model.DoUongSizes.OrderBy(x => x.Gia))
+                    {
+                        var sizeName = sizeOption.MaSizeNavigation.TenSize; // S, M, L
+                        var gia = sizeOption.Gia;
+                        
+                        <div class="form-check custom-radio-size">
+                            <input class="form-check-input btn-check" type="radio" 
+                                   name="MaSize" 
+                                   id="size_@sizeOption.MaSize" 
+                                   value="@sizeOption.MaSize" 
+                                   data-price="@gia"
+                                   required 
+                                   @(sizeName == "S" ? "checked" : "")> <label class="btn btn-outline-success" for="size_@sizeOption.MaSize">
+                                Size @sizeName - @gia.ToString("#,##0")đ
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                <h5 class="mt-4"><i class="bi bi-stars"></i> Thêm Topping:</h5>
+                <div class="row g-2 mb-3">
+                    @if (listTopping != null)
+                    {
+                        foreach (var t in listTopping)
+                        {
+                            <div class="col-6 col-sm-4">
+                                <div class="form-check">
+                                    <input class="form-check-input topping-checkbox" type="checkbox" 
+                                           name="Toppings" 
+                                           value="@t.MaTopping" 
+                                           id="top_@t.MaTopping"
+                                           data-price="@t.Gia">
+                                    <label class="form-check-label" for="top_@t.MaTopping">
+                                        @t.TenTopping (+@t.Gia.ToString("#,##0")đ)
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="d-flex align-items-center mt-4 gap-3">
+                    <label class="fw-bold">Số lượng:</label>
+                    <input type="number" name="SoLuong" id="SoLuong" value="1" min="1" max="10" class="form-control w-25 text-center">
+                </div>
+
+                <div class="alert alert-success mt-4 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Tạm tính:</span>
+                    <span class="h4 mb-0 fw-bold" id="DisplayPrice">0 đ</span>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 btn-lg mt-2">
+                    <i class="bi bi-cart-check"></i> Thêm vào giỏ hàng
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Hàm định dạng tiền tệ VNĐ
+        const formatter = new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+        });
+
+        function updatePrice() {
+            // 1. Lấy giá size đang chọn
+            let basePrice = 0;
+            const selectedSize = document.querySelector('input[name="MaSize"]:checked');
+            if (selectedSize) {
+                basePrice = parseFloat(selectedSize.getAttribute('data-price'));
+            }
+
+            // 2. Cộng tiền topping đã check
+            let toppingPrice = 0;
+            const checkedToppings = document.querySelectorAll('.topping-checkbox:checked');
+            checkedToppings.forEach(cb => {
+                toppingPrice += parseFloat(cb.getAttribute('data-price'));
+            });
+
+            // 3. Nhân số lượng
+            const quantity = parseInt(document.getElementById('SoLuong').value) || 1;
+
+            // 4. Tính tổng
+            const totalPrice = (basePrice + toppingPrice) * quantity;
+
+            // 5. Hiển thị lên màn hình
+            document.getElementById('DisplayPrice').innerText = formatter.format(totalPrice);
+        }
+
+        // Gắn sự kiện (Event Listener)
+        // Khi đổi size, click topping, hoặc đổi số lượng -> Tính lại tiền
+        document.querySelectorAll('input[name="MaSize"]').forEach(el => el.addEventListener('change', updatePrice));
+        document.querySelectorAll('.topping-checkbox').forEach(el => el.addEventListener('change', updatePrice));
+        document.getElementById('SoLuong').addEventListener('input', updatePrice);
+
+        // Gọi 1 lần lúc trang vừa load để hiển thị giá mặc định
+        updatePrice();
+    </script>
+}

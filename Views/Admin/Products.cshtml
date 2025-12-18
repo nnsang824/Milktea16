@@ -1,0 +1,86 @@
+@model IEnumerable<N16_MilkTea.Models.DoUong>
+@{ 
+    Layout = null; 
+    // Lấy danh sách danh mục từ Controller gửi sang
+    var listDanhMuc = ViewBag.ListDanhMuc as List<N16_MilkTea.Models.DanhMuc>;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quản lý sản phẩm</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/Admin/Orders">ADMIN PAGE</a>
+            <div>
+                <a href="/Admin/Orders" class="btn btn-outline-light btn-sm me-2">Đơn hàng</a>
+                <a href="/Admin/Products" class="btn btn-secondary btn-sm me-2">Sản phẩm</a>
+                <a href="/Admin/Logout" class="btn btn-danger btn-sm">Đăng xuất</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Danh sách đồ uống</h3>
+            <a href="/Admin/CreateProduct" class="btn btn-success"><i class="bi bi-plus-lg"></i> Thêm món mới</a>
+        </div>
+
+        @if (TempData["Error"] != null) {
+            <div class="alert alert-danger">@TempData["Error"]</div>
+        }
+
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Ảnh</th>
+                    <th>Tên món</th>
+                    <th>Danh mục</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    // Logic lấy tên danh mục thủ công
+                    string tenDm = "Chưa phân loại";
+                    if (listDanhMuc != null)
+                    {
+                        var dm = listDanhMuc.FirstOrDefault(d => d.MaDanhMuc == item.MaDanhMuc);
+                        if (dm != null) tenDm = dm.TenDanhMuc;
+                    }
+
+                    <tr>
+                        <td style="width: 80px;">
+                            <img src="~/images/@item.HinhAnh" style="width: 60px; height: 60px; object-fit: cover;" class="rounded border" 
+                                 onerror="this.src='https://placehold.co/60x60'">
+                        </td>
+                        <td>@item.TenDoUong</td>
+                        <td>
+                            <span class="badge bg-info text-dark">@tenDm</span>
+                        </td>
+                        <td>
+                            <a href="/Admin/EditProduct/@item.MaDoUong" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i> Sửa</a>
+                            <a href="/Admin/DeleteProduct/@item.MaDoUong" class="btn btn-sm btn-danger" onclick="return confirm('Bạn có chắc muốn xóa món này?');"><i class="bi bi-trash"></i> Xóa</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <nav>
+            <ul class="pagination justify-content-center">
+                @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                {
+                    <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="/Admin/Products?page=@i">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    </div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+@{ ViewData["Title"] = "Đăng nhập"; }
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white text-center">
+                    <h4>ĐĂNG NHẬP</h4>
+                </div>
+                <div class="card-body p-4">
+                    @if (TempData["Success"] != null) {
+                        <div class="alert alert-success">@TempData["Success"]</div>
+                    }
+                    @if (ViewBag.Error != null) {
+                        <div class="alert alert-danger">@ViewBag.Error</div>
+                    }
+
+                    <form asp-action="Login" method="post">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tài khoản</label>
+                            <input type="text" name="TaiKhoan" class="form-control" placeholder="Nhập tên đăng nhập" required />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Mật khẩu</label>
+                            <input type="password" name="MatKhau" class="form-control" placeholder="Nhập mật khẩu" required />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 py-2">Đăng nhập</button>
+                    </form>
+                </div>
+                <div class="card-footer text-center bg-white">
+                    Chưa có tài khoản? <a asp-action="Register" class="text-success fw-bold">Đăng ký mới</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,70 @@
+@model N16_MilkTea.Models.DoUong
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sửa sản phẩm</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-warning">
+                        <h4>Sửa món: @Model.TenDoUong</h4>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="EditProduct" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="id" value="@Model.MaDoUong" />
+
+                            <div class="mb-3">
+                                <label class="form-label">Tên đồ uống</label>
+                                <input asp-for="TenDoUong" class="form-control" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Danh mục</label>
+                                <select asp-for="MaDanhMuc" class="form-select">
+                                    @foreach(var dm in ViewBag.DanhMucs) {
+                                        var selected = dm.MaDanhMuc == Model.MaDanhMuc ? "selected" : "";
+                                        <option value="@dm.MaDanhMuc" selected="@selected">@dm.TenDanhMuc</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-4">
+                                    <label class="form-label text-muted">Giá Size S</label>
+                                    <input type="number" name="GiaS" class="form-control" value="@ViewBag.GiaS" required />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label text-muted">Giá Size M</label>
+                                    <input type="number" name="GiaM" class="form-control" value="@ViewBag.GiaM" required />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label text-muted">Giá Size L</label>
+                                    <input type="number" name="GiaL" class="form-control" value="@ViewBag.GiaL" required />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Hình ảnh</label><br>
+                                <img src="~/images/@Model.HinhAnh" width="100" class="border rounded mb-2" onerror="this.src='https://placehold.co/100'">
+                                <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mô tả</label>
+                                <textarea asp-for="MoTa" class="form-control" rows="3"></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">Cập nhật thay đổi</button>
+                            <a href="/Admin/Products" class="btn btn-secondary w-100 mt-2">Hủy</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

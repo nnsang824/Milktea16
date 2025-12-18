@@ -1,0 +1,134 @@
+@model IEnumerable<N16_MilkTea.Models.DonHang>
+@{ Layout = null; }
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quản lý đơn hàng</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/Admin/Orders">ADMIN PAGE</a>
+            <div>
+                <a href="/Admin/Orders" class="btn btn-secondary btn-sm me-2">Đơn hàng</a>
+                <a href="/Admin/Products" class="btn btn-outline-light btn-sm me-2">Sản phẩm</a>
+                <a href="/Admin/Logout" class="btn btn-danger btn-sm">Đăng xuất</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <h3 class="mb-4 text-primary fw-bold"><i class="bi bi-receipt"></i> Quản lý đơn hàng</h3>
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-white fw-bold">
+                <i class="bi bi-funnel"></i> Bộ lọc tìm kiếm
+            </div>
+            <div class="card-body bg-white">
+                <form method="get" action="/Admin/Orders">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Từ khóa (Tên khách, Mã KH, Mã Đơn)</label>
+                            <input type="text" name="searchName" class="form-control" 
+                                   placeholder="Nhập tên, mã khách hoặc mã đơn..." 
+                                   value="@ViewBag.SearchName">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Từ ngày</label>
+                            <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Đến ngày</label>
+                            <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate">
+                        </div>
+
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Tìm kiếm</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-bordered table-hover mb-0 align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th width="5%">Mã Đơn</th>
+                            <th width="15%">Ngày đặt</th>
+                            <th width="20%">Khách hàng</th>
+                            <th width="35%">Ghi chú / Thông tin giao hàng</th>
+                            <th width="10%">Trạng thái</th>
+                            <th width="10%">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Không tìm thấy đơn hàng nào phù hợp.</td>
+                            </tr>
+                        }
+                        else 
+                        {
+                            @foreach (var item in Model)
+                            {
+                                string statusClass = item.TinhTrangGiaoHang == 1 ? "bg-success" : (item.TinhTrangGiaoHang == -1 ? "bg-danger" : "bg-warning text-dark");
+                                string statusText = item.TinhTrangGiaoHang == 1 ? "Đã giao" : (item.TinhTrangGiaoHang == -1 ? "Đã hủy" : "Mới đặt");
+
+                                <tr>
+                                    <td class="text-center fw-bold">#@item.MaDonHang</td>
+                                    <td class="text-center">@item.NgayDat?.ToString("dd/MM/yyyy HH:mm")</td>
+                                    
+                                    <td>
+                                        @if (item.MaKhNavigation != null)
+                                        {
+                                            <div class="fw-bold text-primary">@item.MaKhNavigation.HoTen</div>
+                                            <div class="small text-muted">Mã KH: @item.MaKh</div>
+                                            <div class="small text-muted">SĐT: @item.MaKhNavigation.DienThoai</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Khách vãng lai</span>
+                                        }
+                                    </td>
+
+                                    <td><small class="text-muted">@item.GhiChu</small></td>
+                                    <td class="text-center"><span class="badge @statusClass">@statusText</span></td>
+                                    <td class="text-center">
+                                        <a href="/Admin/OrderDetails/@item.MaDonHang" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Xem
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="card-footer bg-white">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                        {
+                            // Giữ lại các tham số tìm kiếm khi chuyển trang
+                            string url = $"/Admin/Orders?page={i}&searchName={ViewBag.SearchName}&fromDate={ViewBag.FromDate}&toDate={ViewBag.ToDate}";
+                            
+                            <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@url">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
