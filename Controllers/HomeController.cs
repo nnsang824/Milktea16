@@ -19,7 +19,7 @@ namespace N16_MilkTea.Controllers
             _context = context;
         }
 
-        // --- 1. TRANG CHỦ (TÌM KIẾM + LỌC) ---
+        // --- 1. TRANG CHỦ (HIỆN 6 MÓN TIÊU BIỂU) ---
         public async Task<IActionResult> Index(string? query, int? danhMucId)
         {
             var products = _context.DoUongs
@@ -41,7 +41,7 @@ namespace N16_MilkTea.Controllers
             // Sắp xếp món mới nhất lên đầu
             products = products.OrderByDescending(p => p.MaDoUong);
 
-            // [THAY ĐỔI] Nếu không tìm kiếm gì cả, chỉ lấy 6 món tiêu biểu để trang chủ gọn đẹp
+            // [LOGIC MỚI] Nếu không tìm kiếm gì cả, chỉ lấy 6 món tiêu biểu
             if (string.IsNullOrEmpty(query) && !danhMucId.HasValue)
             {
                 products = products.Take(6);
@@ -66,37 +66,36 @@ namespace N16_MilkTea.Controllers
             ViewBag.Toppings = await _context.Toppings.ToListAsync();
             return View(doUong);
         }
-        // --- THÊM VÀO HomeController.cs ---
 
-        // 8. Trang Thực đơn (Hiển thị theo nhóm danh mục)
+        // --- 3. TRANG THỰC ĐƠN (HIỆN 20 MÓN) ---
         public async Task<IActionResult> Menu()
         {
-            // 1. Lấy tất cả sản phẩm
+            // Lấy 20 món mới nhất
             var products = await _context.DoUongs
                 .Include(d => d.DoUongSizes)
-                .OrderByDescending(d => d.MaDoUong) // Món mới lên đầu
-                // .Take(20) <--- XÓA DÒNG NÀY ĐI
+                .OrderByDescending(d => d.MaDoUong)
+                .Take(20) // Giới hạn 20 món
                 .ToListAsync();
 
-            // 2. Lấy danh sách danh mục để gửi sang View tự tra cứu tên
+            // Lấy danh sách danh mục để gửi sang View tự tra cứu tên (Sửa lỗi MaDanhMucNavigation)
             ViewBag.DanhMucs = await _context.DanhMucs.ToListAsync();
 
             return View(products);
         }
-        // 9. Trang Khuyến mãi
+
+        // --- 4. TRANG KHUYẾN MÃI ---
         public IActionResult Promotions()
         {
             return View();
         }
 
-        // --- 3. THÊM VÀO GIỎ HÀNG (BẮT BUỘC ĐĂNG NHẬP) ---
+        // --- 5. THÊM VÀO GIỎ HÀNG (BẮT BUỘC ĐĂNG NHẬP) ---
         [HttpPost]
         public async Task<IActionResult> AddToCart(int MaDoUong, int MaSize, int SoLuong, List<int> Toppings)
         {
-            // [MỚI] Kiểm tra đăng nhập
+            // Kiểm tra đăng nhập
             if (HttpContext.Session.GetString("MaKh") == null)
             {
-                // Lưu lại thông báo để hiện ở trang Login (nếu muốn)
                 return RedirectToAction("Login", "Account");
             }
 
@@ -147,7 +146,7 @@ namespace N16_MilkTea.Controllers
             return RedirectToAction("Index"); 
         }
 
-        // --- 4. XEM GIỎ HÀNG ---
+        // --- 6. XEM GIỎ HÀNG ---
         public IActionResult Cart()
         {
             var cart = HttpContext.Session.Get<List<CartItem>>("GioHang") ?? new List<CartItem>();
@@ -155,7 +154,7 @@ namespace N16_MilkTea.Controllers
             return View(cart);
         }
 
-        // --- 5. XÓA MÓN ---
+        // --- 7. XÓA MÓN KHỎI GIỎ ---
         public IActionResult RemoveFromCart(int MaDoUong, int MaSize)
         {
             var cart = HttpContext.Session.Get<List<CartItem>>("GioHang");
@@ -171,7 +170,7 @@ namespace N16_MilkTea.Controllers
             return RedirectToAction("Cart");
         }
 
-        // --- 6. CHECKOUT (GET) - Hiển thị form ---
+        // --- 8. CHECKOUT (GET) - Hiển thị form ---
         [HttpGet]
         public IActionResult Checkout()
         {
@@ -184,7 +183,6 @@ namespace N16_MilkTea.Controllers
                 ViewBag.HoTen = HttpContext.Session.GetString("TenKh");
                 ViewBag.DienThoai = HttpContext.Session.GetString("UserPhone");
                 ViewBag.DiaChi = HttpContext.Session.GetString("UserAddress");
-                // [MỚI] Tự điền Email nếu AccountController đã lưu
                 ViewBag.Email = HttpContext.Session.GetString("UserEmail");
             }
 
@@ -192,33 +190,32 @@ namespace N16_MilkTea.Controllers
             return View(cart); 
         }
 
-        // --- 7. CHECKOUT (POST) - Lưu đơn & Gửi mail ---
+        // --- 9. CHECKOUT (POST) - Lưu đơn & Gửi mail ---
         [HttpPost]
         public async Task<IActionResult> Checkout(string HoTen, string DienThoai, string DiaChi, string GhiChu, string Email)
         {
             var cart = HttpContext.Session.Get<List<CartItem>>("GioHang");
             if (cart == null || !cart.Any()) return RedirectToAction("Index");
 
-            // [MỚI] KIỂM TRA BẮT BUỘC EMAIL
+            // Kiểm tra Email bắt buộc
             if (string.IsNullOrEmpty(Email))
             {
                 ViewBag.Error = "Vui lòng nhập Email để nhận thông tin đơn hàng.";
-                // Gán lại dữ liệu để form không bị trống
                 ViewBag.HoTen = HoTen;
                 ViewBag.DienThoai = DienThoai;
                 ViewBag.DiaChi = DiaChi;
                 ViewBag.TongTien = cart.Sum(i => i.ThanhTien);
-                return View(cart); // Trả về trang Checkout kèm thông báo lỗi
+                return View(cart);
             }
 
-            // A. Lấy MaKh (Chắc chắn có vì đã bắt đăng nhập ở AddToCart)
+            // Lấy MaKh
             int? maKhachHang = null;
             if (HttpContext.Session.GetString("MaKh") != null)
             {
                 maKhachHang = int.Parse(HttpContext.Session.GetString("MaKh")!);
             }
 
-            // B. Tạo Đơn Hàng
+            // Tạo đơn hàng
             var donHang = new DonHang
             {
                 NgayDat = DateTime.Now,
@@ -231,7 +228,7 @@ namespace N16_MilkTea.Controllers
             _context.DonHangs.Add(donHang);
             await _context.SaveChangesAsync();
 
-            // C. Lưu Chi Tiết
+            // Lưu chi tiết
             foreach (var item in cart)
             {
                 var chiTiet = new ChiTietDonHang
@@ -262,7 +259,7 @@ namespace N16_MilkTea.Controllers
             }
             await _context.SaveChangesAsync();
 
-            // D. Gửi Email
+            // Gửi Email
             try 
             {
                 GuiEmailXacNhan(Email, donHang.MaDonHang, HoTen, cart);
@@ -272,7 +269,7 @@ namespace N16_MilkTea.Controllers
                 Debug.WriteLine("Lỗi gửi mail: " + ex.Message);
             }
 
-            // E. Xóa giỏ hàng
+            // Xóa giỏ hàng
             HttpContext.Session.Remove("GioHang");
             return RedirectToAction("OrderSuccess");
         }
@@ -282,11 +279,11 @@ namespace N16_MilkTea.Controllers
             return View();
         }
 
-        // --- HÀM GỬI EMAIL ---
+        // --- HÀM GỬI EMAIL (Helper) ---
         private void GuiEmailXacNhan(string emailNhan, int maDon, string tenKhach, List<CartItem> cart)
         {
             var fromAddress = new MailAddress("sangchuadao123@gmail.com", "WebBanTraSua");
-            const string fromPassword = "ghwn wefe ofde ymlp"; // Mật khẩu ứng dụng
+            const string fromPassword = "ghwn wefe ofde ymlp"; // App Password
             
             var toAddress = new MailAddress(emailNhan, tenKhach);
             const string subject = "Xác nhận đơn hàng từ N16 MilkTea";
