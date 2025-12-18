@@ -1,0 +1,63 @@
+@model IEnumerable<N16_MilkTea.Models.DonHang>
+
+@{
+    ViewData["Title"] = "Danh sách đơn hàng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <h2 class="text-primary">Quản lý Đơn hàng</h2>
+    
+    <table class="table table-bordered table-hover mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Mã đơn</th>
+                <th>Ngày đặt</th>
+                <th>Khách hàng</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>#@item.MaDonHang</td>
+                        <td>@item.NgayDat?.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            @if(!string.IsNullOrEmpty(item.GhiChu) && item.GhiChu.Length > 20)
+                            {
+                                <span>@item.GhiChu.Substring(0, 20)...</span>
+                            }
+                            else
+                            {
+                                <span>Khách vãng lai</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.DaThanhToan == true)
+                            {
+                                <span class="badge bg-success">Đã thanh toán</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                            }
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-info">Chi tiết</a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center">Chưa có đơn hàng nào.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

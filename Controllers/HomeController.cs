@@ -2,10 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using N16_MilkTea.Models;
 using System.Diagnostics;
-using N16_MilkTea.ViewModels;
-using N16_MilkTea.Helpers;
-using System.Net;
-using System.Net.Mail;
+// using N16_MilkTea.Helpers; // Tạm tắt nếu không dùng
 using System.Linq; 
 
 namespace N16_MilkTea.Controllers
@@ -22,6 +19,9 @@ namespace N16_MilkTea.Controllers
         // --- 1. TRANG CHỦ (HIỆN 6 MÓN TIÊU BIỂU) ---
         public async Task<IActionResult> Index(string? query, int? danhMucId)
         {
+            // Kiểm tra DB context
+            if (_context.DoUongs == null) return Problem("Entity set 'MilkTeaContext.DoUongs' is null.");
+
             var products = _context.DoUongs
                 .Include(d => d.DoUongSizes) 
                 .AsQueryable();
@@ -41,20 +41,25 @@ namespace N16_MilkTea.Controllers
             // Sắp xếp món mới nhất lên đầu
             products = products.OrderByDescending(p => p.MaDoUong);
 
-            // [LOGIC MỚI] Nếu không tìm kiếm gì cả, chỉ lấy 6 món tiêu biểu
+            // Nếu không tìm kiếm gì cả, chỉ lấy 6 món tiêu biểu
             if (string.IsNullOrEmpty(query) && !danhMucId.HasValue)
             {
                 products = products.Take(6);
             }
 
-            ViewBag.DanhMucs = await _context.DanhMucs.ToListAsync();
+            // Kiểm tra DanhMucs null tránh lỗi view
+            if (_context.DanhMucs != null)
+            {
+                ViewBag.DanhMucs = await _context.DanhMucs.ToListAsync();
+            }
+            
             return View(await products.ToListAsync());
         }
 
         // --- 2. CHI TIẾT SẢN PHẨM ---
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null || _context.DoUongs == null) return NotFound();
 
             var doUong = await _context.DoUongs
                 .Include(d => d.DoUongSizes)
@@ -63,22 +68,30 @@ namespace N16_MilkTea.Controllers
 
             if (doUong == null) return NotFound();
 
-            ViewBag.Toppings = await _context.Toppings.ToListAsync();
+            if (_context.Toppings != null)
+            {
+                ViewBag.Toppings = await _context.Toppings.ToListAsync();
+            }
+            
             return View(doUong);
         }
 
         // --- 3. TRANG THỰC ĐƠN (HIỆN 20 MÓN) ---
         public async Task<IActionResult> Menu()
         {
+            if (_context.DoUongs == null) return NotFound();
+
             // Lấy 20 món mới nhất
             var products = await _context.DoUongs
                 .Include(d => d.DoUongSizes)
                 .OrderByDescending(d => d.MaDoUong)
-                .Take(20) // Giới hạn 20 món
+                .Take(20) 
                 .ToListAsync();
 
-            // Lấy danh sách danh mục để gửi sang View tự tra cứu tên (Sửa lỗi MaDanhMucNavigation)
-            ViewBag.DanhMucs = await _context.DanhMucs.ToListAsync();
+            if (_context.DanhMucs != null)
+            {
+                ViewBag.DanhMucs = await _context.DanhMucs.ToListAsync();
+            }
 
             return View(products);
         }
@@ -89,238 +102,7 @@ namespace N16_MilkTea.Controllers
             return View();
         }
 
-        // --- 5. THÊM VÀO GIỎ HÀNG (BẮT BUỘC ĐĂNG NHẬP) ---
-        [HttpPost]
-        public async Task<IActionResult> AddToCart(int MaDoUong, int MaSize, int SoLuong, List<int> Toppings)
-        {
-            // Kiểm tra đăng nhập
-            if (HttpContext.Session.GetString("MaKh") == null)
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
-            var doUong = await _context.DoUongs.FindAsync(MaDoUong);
-            
-            var sizeInfo = await _context.DoUongSizes
-                .Include(ds => ds.MaSizeNavigation)
-                .FirstOrDefaultAsync(x => x.MaDoUong == MaDoUong && x.MaSize == MaSize);
-
-            if (doUong == null || sizeInfo == null) return NotFound("Lỗi dữ liệu sản phẩm");
-
-            // Xử lý topping
-            var listToppingsChon = new List<CartTopping>();
-            if (Toppings != null && Toppings.Any())
-            {
-                var dbToppings = await _context.Toppings
-                    .Where(t => Toppings.Contains(t.MaTopping))
-                    .ToListAsync();
-
-                foreach (var t in dbToppings)
-                {
-                    listToppingsChon.Add(new CartTopping 
-                    { 
-                        MaTopping = t.MaTopping, 
-                        TenTopping = t.TenTopping, 
-                        Gia = t.Gia 
-                    });
-                }
-            }
-
-            // Lưu vào Session
-            var cart = HttpContext.Session.Get<List<CartItem>>("GioHang") ?? new List<CartItem>();
-            var newItem = new CartItem
-            {
-                MaDoUong = doUong.MaDoUong,
-                TenDoUong = doUong.TenDoUong,
-                HinhAnh = doUong.HinhAnh,
-                MaSize = sizeInfo.MaSize,
-                TenSize = sizeInfo.MaSizeNavigation.TenSize,
-                DonGia = sizeInfo.Gia,
-                SoLuong = SoLuong,
-                Toppings = listToppingsChon
-            };
-
-            cart.Add(newItem);
-            HttpContext.Session.Set("GioHang", cart);
-
-            return RedirectToAction("Index"); 
-        }
-
-        // --- 6. XEM GIỎ HÀNG ---
-        public IActionResult Cart()
-        {
-            var cart = HttpContext.Session.Get<List<CartItem>>("GioHang") ?? new List<CartItem>();
-            ViewBag.TongTien = cart.Sum(item => item.ThanhTien);
-            return View(cart);
-        }
-
-        // --- 7. XÓA MÓN KHỎI GIỎ ---
-        public IActionResult RemoveFromCart(int MaDoUong, int MaSize)
-        {
-            var cart = HttpContext.Session.Get<List<CartItem>>("GioHang");
-            if (cart != null)
-            {
-                var itemToRemove = cart.FirstOrDefault(x => x.MaDoUong == MaDoUong && x.MaSize == MaSize);
-                if (itemToRemove != null)
-                {
-                    cart.Remove(itemToRemove);
-                    HttpContext.Session.Set("GioHang", cart);
-                }
-            }
-            return RedirectToAction("Cart");
-        }
-
-        // --- 8. CHECKOUT (GET) - Hiển thị form ---
-        [HttpGet]
-        public IActionResult Checkout()
-        {
-            var cart = HttpContext.Session.Get<List<CartItem>>("GioHang");
-            if (cart == null || cart.Count == 0) return RedirectToAction("Index");
-            
-            // Tự động điền thông tin nếu đã đăng nhập
-            if (HttpContext.Session.GetString("TenKh") != null)
-            {
-                ViewBag.HoTen = HttpContext.Session.GetString("TenKh");
-                ViewBag.DienThoai = HttpContext.Session.GetString("UserPhone");
-                ViewBag.DiaChi = HttpContext.Session.GetString("UserAddress");
-                ViewBag.Email = HttpContext.Session.GetString("UserEmail");
-            }
-
-            ViewBag.TongTien = cart.Sum(i => i.ThanhTien);
-            return View(cart); 
-        }
-
-        // --- 9. CHECKOUT (POST) - Lưu đơn & Gửi mail ---
-        [HttpPost]
-        public async Task<IActionResult> Checkout(string HoTen, string DienThoai, string DiaChi, string GhiChu, string Email)
-        {
-            var cart = HttpContext.Session.Get<List<CartItem>>("GioHang");
-            if (cart == null || !cart.Any()) return RedirectToAction("Index");
-
-            // Kiểm tra Email bắt buộc
-            if (string.IsNullOrEmpty(Email))
-            {
-                ViewBag.Error = "Vui lòng nhập Email để nhận thông tin đơn hàng.";
-                ViewBag.HoTen = HoTen;
-                ViewBag.DienThoai = DienThoai;
-                ViewBag.DiaChi = DiaChi;
-                ViewBag.TongTien = cart.Sum(i => i.ThanhTien);
-                return View(cart);
-            }
-
-            // Lấy MaKh
-            int? maKhachHang = null;
-            if (HttpContext.Session.GetString("MaKh") != null)
-            {
-                maKhachHang = int.Parse(HttpContext.Session.GetString("MaKh")!);
-            }
-
-            // Tạo đơn hàng
-            var donHang = new DonHang
-            {
-                NgayDat = DateTime.Now,
-                TinhTrangGiaoHang = 0,
-                DaThanhToan = false,
-                GhiChu = $"KH: {HoTen}, SĐT: {DienThoai}, ĐC: {DiaChi}, Email: {Email}. Note: {GhiChu}",
-                MaKh = maKhachHang
-            };
-            
-            _context.DonHangs.Add(donHang);
-            await _context.SaveChangesAsync();
-
-            // Lưu chi tiết
-            foreach (var item in cart)
-            {
-                var chiTiet = new ChiTietDonHang
-                {
-                    MaDonHang = donHang.MaDonHang,
-                    MaDoUong = item.MaDoUong,
-                    MaSize = item.MaSize,
-                    SoLuong = item.SoLuong,
-                    DonGia = item.DonGia
-                };
-                _context.ChiTietDonHangs.Add(chiTiet);
-                await _context.SaveChangesAsync();
-
-                if (item.Toppings != null)
-                {
-                    foreach (var top in item.Toppings)
-                    {
-                        var chiTietTopping = new ChiTietTopping
-                        {
-                            MaChiTiet = chiTiet.MaChiTiet,
-                            MaTopping = top.MaTopping,
-                            SoLuong = 1,
-                            DonGia = top.Gia
-                        };
-                        _context.ChiTietToppings.Add(chiTietTopping);
-                    }
-                }
-            }
-            await _context.SaveChangesAsync();
-
-            // Gửi Email
-            try 
-            {
-                GuiEmailXacNhan(Email, donHang.MaDonHang, HoTen, cart);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("Lỗi gửi mail: " + ex.Message);
-            }
-
-            // Xóa giỏ hàng
-            HttpContext.Session.Remove("GioHang");
-            return RedirectToAction("OrderSuccess");
-        }
-
-        public IActionResult OrderSuccess()
-        {
-            return View();
-        }
-
-        // --- HÀM GỬI EMAIL (Helper) ---
-        private void GuiEmailXacNhan(string emailNhan, int maDon, string tenKhach, List<CartItem> cart)
-        {
-            var fromAddress = new MailAddress("sangchuadao123@gmail.com", "WebBanTraSua");
-            const string fromPassword = "ghwn wefe ofde ymlp"; // App Password
-            
-            var toAddress = new MailAddress(emailNhan, tenKhach);
-            const string subject = "Xác nhận đơn hàng từ N16 MilkTea";
-            
-            string body = $"<h3>Cảm ơn {tenKhach} đã đặt hàng!</h3>";
-            body += $"<p>Mã đơn: <b>#{maDon}</b></p>";
-            body += "<table border='1' style='border-collapse:collapse; width:100%;'>";
-            body += "<tr style='background-color:#f2f2f2;'><th>Món</th><th>Size</th><th>Topping</th><th>Giá</th></tr>";
-            
-            decimal tongTien = 0;
-            foreach(var item in cart)
-            {
-                string toppings = item.Toppings.Any() ? string.Join(", ", item.Toppings.Select(t => t.TenTopping)) : "Không";
-                body += $"<tr><td>{item.TenDoUong}</td><td>{item.TenSize}</td><td>{toppings}</td><td>{item.ThanhTien:N0} đ</td></tr>";
-                tongTien += item.ThanhTien;
-            }
-            body += $"</table><h3>Tổng cộng: <span style='color:red;'>{tongTien:N0} VNĐ</span></h3>";
-            
-            var smtp = new SmtpClient
-            {
-                Host = "smtp.gmail.com",
-                Port = 587,
-                EnableSsl = true,
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
-            };
-            
-            using (var message = new MailMessage(fromAddress, toAddress)
-            {
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true
-            })
-            {
-                smtp.Send(message);
-            }
-        }
+        // --- CÁC HÀM GIỎ HÀNG (AddToCart, Cart, Checkout...) ĐÃ ĐƯỢC CHUYỂN SANG CARTCONTROLLER 
+        // ĐỂ TRÁNH LỖI XUNG ĐỘT CODE ---
     }
 }

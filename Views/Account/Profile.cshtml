@@ -1,0 +1,53 @@
+@model N16_MilkTea.Models.KhachHang
+@{ ViewData["Title"] = "Thông tin tài khoản"; }
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Hồ sơ của tôi</h4>
+                </div>
+                <div class="card-body">
+                    @if(TempData["Success"] != null) {
+                        <div class="alert alert-success">@TempData["Success"]</div>
+                    }
+
+                    <form asp-action="UpdateProfile" method="post">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Họ và tên</label>
+                                <input asp-for="HoTen" class="form-control" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Số điện thoại</label>
+                                <input asp-for="DienThoai" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Địa chỉ giao hàng</label>
+                            <input asp-for="DiaChi" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email (Nhận thông báo đơn hàng)</label>
+                            <input asp-for="Email" class="form-control" type="email" />
+                        </div>
+
+                        <hr />
+                        <h5 class="text-muted">Đổi mật khẩu (Bỏ trống nếu không đổi)</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu mới</label>
+                            <input type="password" name="MatKhau" class="form-control" placeholder="******" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Lưu thay đổi
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

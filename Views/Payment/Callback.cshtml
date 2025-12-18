@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Kết quả thanh toán";
+}
+
+<div class="text-center" style="margin-top: 50px; margin-bottom: 50px;">
+    @if (ViewBag.Message.Contains("thành công"))
+    {
+        <h1 class="text-success" style="font-size: 3rem;">
+            <i class="fa fa-check-circle"></i>
+        </h1>
+        <h2 class="text-success">Thanh toán thành công!</h2>
+    }
+    else
+    {
+        <h1 class="text-danger" style="font-size: 3rem;">
+            <i class="fa fa-times-circle"></i>
+        </h1>
+        <h2 class="text-danger">Thanh toán thất bại</h2>
+    }
+
+    <h4 class="text-muted mt-3">@ViewBag.Message</h4>
+
+    <div class="mt-4">
+        <a href="/" class="btn btn-primary">Về trang chủ</a>
+        <a href="/Payment/CreatePaymentUrl" class="btn btn-secondary">Thử lại</a>
+    </div>
+</div>

@@ -43,8 +43,8 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Mô tả</label>
-                                <textarea asp-for="MoTa" class="form-control" rows="3"></textarea>
+                                <label class="form-label fw-bold">Mô tả</label>
+                                <textarea asp-for="MoTa" class="form-control" id="MoTaEditor" rows="3"></textarea>
                             </div>
 
                             <button type="submit" class="btn btn-success w-100">Lưu sản phẩm</button>
@@ -57,3 +57,22 @@
     </div>
 </body>
 </html>
+<script src="https://cdn.ckeditor.com/ckeditor5/40.2.0/classic/ckeditor.js"></script>
+
+<script>
+    ClassicEditor
+        .create(document.querySelector('#MoTaEditor'), {
+            toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote' ],
+            placeholder: 'Nhập mô tả chi tiết sản phẩm...'
+        })
+        .catch(error => {
+            console.error(error);
+        });
+</script>
+
+<style>
+    /* Chỉnh chiều cao khung soạn thảo cho đẹp */
+    .ck-editor__editable {
+        min-height: 200px;
+    }
+</style>

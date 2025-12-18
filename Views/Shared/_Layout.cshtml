@@ -1,5 +1,6 @@
 ﻿@using N16_MilkTea.Helpers
-@using N16_MilkTea.ViewModels
+@using N16_MilkTea.Models
+@using N16_MilkTea.Extensions @* THÊM DÒNG NÀY ĐỂ DÙNG GetObject *@
 @using Microsoft.AspNetCore.Http
 
 <!DOCTYPE html>
@@ -50,10 +51,14 @@
                         </form>
 
                         @{
-                            var cart = Context.Session.Get<List<CartItem>>("GioHang");
-                            var totalItem = cart != null ? cart.Sum(x => x.SoLuong) : 0;
+                            // SỬA 1: Dùng GetObject thay vì Get
+                            // SỬA 2: Dùng key "Cart" thay vì "GioHang"
+                            var cart = Context.Session.GetObject<List<CartItem>>("Cart");
+                            var totalItem = cart != null ? cart.Sum(x => x.Quantity) : 0;
                         }
-                        <a asp-controller="Home" asp-action="Cart" class="btn btn-success position-relative">
+                        
+                        @* SỬA 3: Chuyển hướng về Cart/Index thay vì Home/Cart *@
+                        <a asp-controller="Cart" asp-action="Index" class="btn btn-success position-relative">
                             <i class="bi bi-cart3 fs-5"></i>
                             @if(totalItem > 0)
                             {
@@ -72,7 +77,8 @@
                                         <span class="d-none d-md-inline">@Context.Session.GetString("TenKh")</span>
                                     </a>
                                     <ul class="dropdown-menu dropdown-menu-end shadow">
-                                        <li><a class="dropdown-item" href="#">Lịch sử đơn hàng</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">Thông tin cá nhân</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Account" asp-action="History">Lịch sử đơn hàng</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout">Đăng xuất</a></li>
                                     </ul>
