@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using N16_MilkTea.Models;
 using Microsoft.EntityFrameworkCore;
+using N16_MilkTea.Models;
+using System.Net;
+using System.Net.Mail;
 
 namespace N16_MilkTea.Controllers
 {
@@ -25,7 +27,6 @@ namespace N16_MilkTea.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Kiểm tra xem tên đăng nhập đã tồn tại chưa
                 var existingUser = await _context.KhachHangs
                     .FirstOrDefaultAsync(k => k.TaiKhoan == model.TaiKhoan);
 
@@ -35,9 +36,7 @@ namespace N16_MilkTea.Controllers
                     return View(model);
                 }
 
-                // Gán ngày tạo mặc định nếu null
                 model.NgaySinh ??= DateTime.Now;
-
                 _context.KhachHangs.Add(model);
                 await _context.SaveChangesAsync();
 
@@ -47,67 +46,48 @@ namespace N16_MilkTea.Controllers
             return View(model);
         }
 
-        // --- 2. ĐĂNG NHẬP (ĐÃ SỬA) ---
+        // --- 2. ĐĂNG NHẬP ---
         [HttpGet]
-        public IActionResult Login(string returnUrl = null) // Thêm tham số này
+        public IActionResult Login(string returnUrl = null)
         {
-            // Lưu lại URL muốn quay về để truyền sang View
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string TaiKhoan, string MatKhau, string returnUrl = null) // Thêm tham số này
+        public async Task<IActionResult> Login(string TaiKhoan, string MatKhau, string returnUrl = null)
         {
             var user = await _context.KhachHangs
                 .SingleOrDefaultAsync(k => k.TaiKhoan == TaiKhoan && k.MatKhau == MatKhau);
 
             if (user != null)
             {
-                // 1. Lưu Session như cũ
                 HttpContext.Session.SetString("MaKh", user.MaKh.ToString());
                 HttpContext.Session.SetString("TenKh", user.HoTen ?? "Khách hàng");
                 HttpContext.Session.SetString("UserPhone", user.DienThoai ?? "");
                 HttpContext.Session.SetString("UserAddress", user.DiaChi ?? "");
                 HttpContext.Session.SetString("UserEmail", user.Email ?? "");
 
-                // 2. LOGIC QUAN TRỌNG: Kiểm tra và quay lại trang cũ
                 if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 {
-                    return Redirect(returnUrl); // Quay lại trang Giỏ hàng (hoặc trang trước đó)
+                    return Redirect(returnUrl);
                 }
-
-                return RedirectToAction("Index", "Home"); // Mặc định về trang chủ
+                return RedirectToAction("Index", "Home");
             }
 
             ViewBag.Error = "Tên đăng nhập hoặc mật khẩu không đúng.";
-            ViewBag.ReturnUrl = returnUrl; // Giữ lại URL nếu đăng nhập sai để lần sau nhập đúng vẫn quay lại được
+            ViewBag.ReturnUrl = returnUrl;
             return View();
         }
+
         // --- 3. ĐĂNG XUẤT ---
         public IActionResult Logout()
         {
-            HttpContext.Session.Clear(); // Xóa toàn bộ session
+            HttpContext.Session.Clear();
             return RedirectToAction("Index", "Home");
         }
-        // Xem lịch sử đơn hàng
-        public async Task<IActionResult> History()
-        {
-            // Lấy mã khách từ Session
-            var maKhString = HttpContext.Session.GetString("MaKh");
-            if (maKhString == null) return RedirectToAction("Login");
 
-            int maKh = int.Parse(maKhString);
-
-            var listDonHang = await _context.DonHangs
-                .Where(d => d.MaKh == maKh)
-                .OrderByDescending(d => d.NgayDat) // Đơn mới nhất lên đầu
-                .Include(d => d.ChiTietDonHangs) // Kèm chi tiết nếu muốn hiển thị
-                .ToListAsync();
-
-            return View(listDonHang);
-        }
-        // --- QUẢN LÝ THÔNG TIN CÁ NHÂN ---
+        // --- 4. THÔNG TIN CÁ NHÂN ---
         [HttpGet]
         public async Task<IActionResult> Profile()
         {
@@ -127,13 +107,11 @@ namespace N16_MilkTea.Controllers
             var user = await _context.KhachHangs.FindAsync(int.Parse(maKhStr));
             if (user != null)
             {
-                // Cập nhật thông tin
                 user.HoTen = model.HoTen;
                 user.DienThoai = model.DienThoai;
                 user.DiaChi = model.DiaChi;
                 user.Email = model.Email;
                 
-                // Nếu người dùng nhập mật khẩu mới thì mới đổi
                 if (!string.IsNullOrEmpty(model.MatKhau))
                 {
                     user.MatKhau = model.MatKhau;
@@ -141,7 +119,6 @@ namespace N16_MilkTea.Controllers
 
                 await _context.SaveChangesAsync();
                 
-                // Cập nhật lại Session
                 HttpContext.Session.SetString("TenKh", user.HoTen);
                 HttpContext.Session.SetString("UserPhone", user.DienThoai ?? "");
                 HttpContext.Session.SetString("UserAddress", user.DiaChi ?? "");
@@ -150,6 +127,116 @@ namespace N16_MilkTea.Controllers
                 TempData["Success"] = "Cập nhật thông tin thành công!";
             }
             return RedirectToAction("Profile");
+        }
+        // --- 5. LỊCH SỬ ĐƠN HÀNG ---
+        public async Task<IActionResult> History()
+        {
+            // 1. Kiểm tra đăng nhập
+            if (HttpContext.Session.GetString("MaKh") == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            // 2. Lấy MaKh từ Session
+            int maKh = int.Parse(HttpContext.Session.GetString("MaKh"));
+
+            // 3. Truy vấn DB lấy đơn hàng của khách đó
+            var orders = await _context.DonHangs
+                .Where(d => d.MaKh == maKh)
+                .Include(d => d.ChiTietDonHangs) // Kèm chi tiết để tính tổng tiền
+                .OrderByDescending(d => d.NgayDat) // Đơn mới nhất lên đầu
+                .ToListAsync();
+
+            return View(orders);
+        }
+
+        // Xem chi tiết một đơn hàng cụ thể trong lịch sử
+        public async Task<IActionResult> HistoryDetails(int id)
+        {
+            if (HttpContext.Session.GetString("MaKh") == null) return RedirectToAction("Login");
+
+            var order = await _context.DonHangs
+                .Include(d => d.ChiTietDonHangs).ThenInclude(ct => ct.MaDoUongNavigation)
+                .Include(d => d.ChiTietDonHangs).ThenInclude(ct => ct.MaSizeNavigation) // Nếu có bảng Size
+                .FirstOrDefaultAsync(d => d.MaDonHang == id);
+
+            if (order == null) return NotFound();
+
+            return View(order);
+        }
+
+        // --- 6. QUÊN MẬT KHẨU (MỚI THÊM) ---
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            // Tìm user theo email
+            var user = await _context.KhachHangs.FirstOrDefaultAsync(k => k.Email == email);
+            if (user == null)
+            {
+                ViewBag.Error = "Email này chưa được đăng ký trong hệ thống!";
+                return View();
+            }
+
+            // Tạo mật khẩu mới ngẫu nhiên (8 ký tự)
+            string newPassword = Guid.NewGuid().ToString().Substring(0, 8);
+            
+            // Cập nhật vào DB
+            user.MatKhau = newPassword;
+            await _context.SaveChangesAsync();
+
+            // Gửi mail
+            bool guiThanhCong = await GuiEmailMatKhauMoi(email, newPassword);
+
+            if (guiThanhCong)
+            {
+                TempData["Success"] = "Mật khẩu mới đã được gửi vào Email của bạn. Vui lòng kiểm tra (cả mục Spam).";
+                return RedirectToAction("Login");
+            }
+            else
+            {
+                ViewBag.Error = "Lỗi gửi mail. Vui lòng thử lại sau.";
+                return View();
+            }
+        }
+
+        // --- HÀM GỬI EMAIL QUÊN MẬT KHẨU ---
+        private async Task<bool> GuiEmailMatKhauMoi(string emailNhan, string matKhauMoi)
+        {
+            try
+            {
+                var fromAddress = new MailAddress("sangchuadao123@gmail.com", "N16 MilkTea");
+                const string fromPassword = "ghwn wefe ofde ymlp"; // App Password của bạn
+                
+                var toAddress = new MailAddress(emailNhan);
+                string subject = "Cấp lại mật khẩu - N16 MilkTea";
+                string body = $"<h3>Mật khẩu mới của bạn là: <span style='color:red; font-size: 20px'>{matKhauMoi}</span></h3><p>Vui lòng đăng nhập và đổi lại mật khẩu ngay.</p>";
+
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
+                };
+
+                using (var message = new MailMessage(fromAddress, toAddress) { Subject = subject, Body = body, IsBodyHtml = true })
+                {
+                    await smtp.SendMailAsync(message);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

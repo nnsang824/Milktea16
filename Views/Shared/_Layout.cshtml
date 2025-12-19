@@ -1,7 +1,13 @@
 ﻿@using N16_MilkTea.Helpers
 @using N16_MilkTea.Models
-@using N16_MilkTea.Extensions @* THÊM DÒNG NÀY ĐỂ DÙNG GetObject *@
+@using N16_MilkTea.Extensions
 @using Microsoft.AspNetCore.Http
+
+@{
+    // Lấy tên Controller và Action hiện tại để tô đậm Menu
+    string currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+    string currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
+}
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -30,34 +36,42 @@
                 <div class="collapse navbar-collapse" id="navbarContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link active" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                            <a class="nav-link @(currentController == "Home" && currentAction == "Index" ? "active fw-bold text-success" : "")" 
+                               asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Menu">Thực đơn</a>
+                            <a class="nav-link @(currentAction == "Menu" ? "active fw-bold text-success" : "")" 
+                               asp-controller="Home" asp-action="Menu">Thực đơn</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Promotions">Khuyến mãi</a>
+                            <a class="nav-link @(currentAction == "Promotions" ? "active fw-bold text-success" : "")" 
+                               asp-controller="Home" asp-action="Promotions">Khuyến mãi</a>
                         </li>
+                        
+                        @if (Context.Session.GetString("AdminUser") != null)
+                        {
+                            <li class="nav-item ms-lg-3">
+                                <a class="btn btn-sm btn-danger fw-bold" asp-controller="Admin" asp-action="Dashboard">
+                                    <i class="bi bi-speedometer2"></i> QUẢN TRỊ VIÊN
+                                </a>
+                            </li>
+                        }
                     </ul>
 
                     <div class="d-flex align-items-center gap-3">
                         <form class="d-flex" role="search" asp-controller="Home" asp-action="Index" method="get">
                             <div class="input-group">
                                 <input class="form-control border-success" type="search" name="query" 
-                                       placeholder="Tìm món..." aria-label="Search" 
-                                       value="@Context.Request.Query["query"]">
+                                       placeholder="Tìm món..." value="@Context.Request.Query["query"]">
                                 <button class="btn btn-outline-success" type="submit"><i class="bi bi-search"></i></button>
                             </div>
                         </form>
 
                         @{
-                            // SỬA 1: Dùng GetObject thay vì Get
-                            // SỬA 2: Dùng key "Cart" thay vì "GioHang"
                             var cart = Context.Session.GetObject<List<CartItem>>("Cart");
                             var totalItem = cart != null ? cart.Sum(x => x.Quantity) : 0;
                         }
                         
-                        @* SỬA 3: Chuyển hướng về Cart/Index thay vì Home/Cart *@
                         <a asp-controller="Cart" asp-action="Index" class="btn btn-success position-relative">
                             <i class="bi bi-cart3 fs-5"></i>
                             @if(totalItem > 0)
@@ -99,6 +113,21 @@
     </header>
 
     <div class="container" style="margin-top: 80px;">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
@@ -136,9 +165,29 @@
         </div>
     </footer>
 
+    <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999; text-align:center; padding-top:20%;">
+        <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h4 class="text-success mt-3 fw-bold">Đang xử lý, vui lòng chờ...</h4>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        // 1. Tự động ẩn thông báo sau 5 giây
+        setTimeout(function() {
+            $('.alert').alert('close');
+        }, 5000);
+
+        // 2. Hiện Loading khi Submit Form (Trừ form tìm kiếm)
+        $('form').not('[role="search"]').on('submit', function() {
+            // Kiểm tra form có hợp lệ không (nếu có jquery-validation)
+            // Nếu không dùng validation thì cứ hiện luôn
+            $('#loadingOverlay').fadeIn();
+        });
+    </script>
+    
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

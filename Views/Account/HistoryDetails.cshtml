@@ -1,0 +1,48 @@
+@model N16_MilkTea.Models.DonHang
+@{ ViewData["Title"] = "Chi tiết đơn hàng #" + Model.MaDonHang; }
+
+<div class="container py-5">
+    <a asp-action="History" class="btn btn-outline-secondary mb-3">&larr; Quay lại lịch sử</a>
+    
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between">
+            <h5 class="mb-0">Đơn hàng #@Model.MaDonHang</h5>
+            <span>@Model.NgayDat?.ToString("dd/MM/yyyy HH:mm")</span>
+        </div>
+        <div class="card-body">
+            <p><strong>Người nhận:</strong> @Model.MaKhNavigation?.HoTen</p>
+            <p><strong>Ghi chú:</strong> @Model.GhiChu</p>
+            <hr>
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Món</th>
+                        <th>Size</th>
+                        <th>Giá</th>
+                        <th>SL</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ct in Model.ChiTietDonHangs)
+                    {
+                        <tr>
+                            <td>@ct.MaDoUongNavigation?.TenDoUong</td>
+                            <td>@ct.MaSizeNavigation?.TenSize</td> <td>@ct.DonGia.ToString("#,##0") đ</td>
+                            <td>@ct.SoLuong</td>
+                            <td>@((ct.DonGia * ct.SoLuong).ToString("#,##0")) đ</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end fw-bold">TỔNG CỘNG:</td>
+                        <td class="fw-bold text-danger">
+                            @Model.ChiTietDonHangs.Sum(c => c.DonGia * c.SoLuong).ToString("#,##0") đ
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
