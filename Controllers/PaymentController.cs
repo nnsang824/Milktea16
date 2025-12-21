@@ -32,19 +32,31 @@ namespace N16_MilkTea.Controllers
 
             if (amount <= 0) return RedirectToAction("CheckoutCOD");
 
+            // SỬA LỖI MÚI GIỜ: Lấy giờ UTC + 7 (Giờ Việt Nam)
+            DateTime timeNow = DateTime.UtcNow.AddHours(7);
+
             var vnpay = new VnPayLibrary();
             vnpay.AddRequestData("vnp_Version", VnPayLibrary.VERSION);
             vnpay.AddRequestData("vnp_Command", "pay");
             vnpay.AddRequestData("vnp_TmnCode", _configuration["VnPay:TmnCode"]);
             vnpay.AddRequestData("vnp_Amount", (amount * 100).ToString()); 
-            vnpay.AddRequestData("vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss"));
+            
+            // SỬA LỖI 1: Dùng giờ Việt Nam thay vì DateTime.Now (Giờ Server Mỹ)
+            vnpay.AddRequestData("vnp_CreateDate", timeNow.ToString("yyyyMMddHHmmss"));
+            
             vnpay.AddRequestData("vnp_CurrCode", "VND");
-            vnpay.AddRequestData("vnp_IpAddr", "127.0.0.1");
+            vnpay.AddRequestData("vnp_IpAddr", "127.0.0.1"); // Hoặc Utils.GetIpAddress(HttpContext)
             vnpay.AddRequestData("vnp_Locale", "vn");
-            vnpay.AddRequestData("vnp_OrderInfo", "Thanh toan don hang " + DateTime.Now.Ticks);
+            vnpay.AddRequestData("vnp_OrderInfo", "Thanh toan don hang " + timeNow.Ticks);
             vnpay.AddRequestData("vnp_OrderType", "other");
-            vnpay.AddRequestData("vnp_ReturnUrl", "http://localhost:5086/Payment/Callback"); 
-            vnpay.AddRequestData("vnp_TxnRef", DateTime.Now.Ticks.ToString());
+            
+            // SỬA LỖI 2: Cập nhật URL trả về khi chạy trên Somee
+            // Khi chạy Local thì dùng localhost, khi up lên Somee thì dùng domain thật
+            // Bạn có thể dùng logic tự động hoặc sửa cứng khi deploy
+            // Ví dụ: http://nhom16.somee.com/Payment/Callback
+            vnpay.AddRequestData("vnp_ReturnUrl", "http://nhom16.somee.com/Payment/Callback"); //http://localhost:5086
+            
+            vnpay.AddRequestData("vnp_TxnRef", timeNow.Ticks.ToString());
 
             string paymentUrl = vnpay.CreateRequestUrl(_configuration["VnPay:BaseUrl"], _configuration["VnPay:HashSecret"]);
             return Redirect(paymentUrl);
@@ -69,7 +81,6 @@ namespace N16_MilkTea.Controllers
             {
                 if (vnpay.GetResponseData("vnp_ResponseCode") == "00")
                 {
-                    // VNPAY THÀNH CÔNG -> GỌI HÀM LƯU & GỬI MAIL
                     await XuLyLuuDonHang(true, "Thanh toán qua VNPAY");
                     return View(); 
                 }
@@ -85,7 +96,7 @@ namespace N16_MilkTea.Controllers
             return View();
         }
 
-        // --- 3. THANH TOÁN COD ---
+        // --- 3. THANH TOÁN COD (Giữ nguyên) ---
         public async Task<IActionResult> CheckoutCOD()
         {
             if (HttpContext.Session.GetString("MaKh") == null)
@@ -103,21 +114,27 @@ namespace N16_MilkTea.Controllers
             return RedirectToAction("Index", "Cart");
         }
 
-        // --- 4. HÀM LƯU ĐƠN HÀNG (TÁCH RIÊNG) ---
+        // --- 4. HÀM LƯU ĐƠN HÀNG (Giữ nguyên logic của bạn) ---
         private async Task<bool> XuLyLuuDonHang(bool daThanhToan, string ghiChu)
         {
             var cart = HttpContext.Session.GetObject<List<CartItem>>("Cart");
             var maKhString = HttpContext.Session.GetString("MaKh");
             var userEmail = HttpContext.Session.GetString("UserEmail");
-            var tenKh = HttpContext.Session.GetString("TenKh") ?? "Khách hàng"; // Lấy tên khách để gửi mail
+            var tenKh = HttpContext.Session.GetString("TenKh") ?? "Khách hàng"; 
+            var voucherCode = HttpContext.Session.GetString("VoucherCode"); 
 
             if (cart == null || maKhString == null) return false;
 
-            // A. Lưu Đơn
+            if (!string.IsNullOrEmpty(voucherCode))
+            {
+                ghiChu += $" | Voucher: {voucherCode}"; 
+            }
+
+            // SỬA NHỎ: Dùng giờ VN cho ngày đặt luôn cho đồng bộ
             var donHang = new DonHang
             {
                 MaKh = int.Parse(maKhString),
-                NgayDat = DateTime.Now,
+                NgayDat = DateTime.UtcNow.AddHours(7), // Sửa ở đây luôn
                 TinhTrangGiaoHang = 0,
                 DaThanhToan = daThanhToan,
                 GhiChu = ghiChu
@@ -125,7 +142,6 @@ namespace N16_MilkTea.Controllers
             _context.DonHangs.Add(donHang);
             await _context.SaveChangesAsync();
 
-            // B. Lưu Chi Tiết
             foreach (var item in cart)
             {
                 _context.ChiTietDonHangs.Add(new ChiTietDonHang
@@ -139,31 +155,27 @@ namespace N16_MilkTea.Controllers
             }
             await _context.SaveChangesAsync();
 
-            // C. Gửi Email (DÙNG LOGIC CŨ CỦA BẠN)
             if (!string.IsNullOrEmpty(userEmail))
             {
-                // Gọi hàm gửi mail cũ (chạy đồng bộ cho chắc ăn)
                 GuiEmailXacNhan(userEmail, donHang.MaDonHang, tenKh, cart);
             }
 
-            // D. Dọn dẹp
             HttpContext.Session.Remove("Cart");
             HttpContext.Session.Remove("OrderTotalAmount");
             HttpContext.Session.Remove("DiscountAmount");
+            HttpContext.Session.Remove("VoucherCode");
 
             ViewBag.Message = $"Đặt hàng thành công! Mã đơn #{donHang.MaDonHang}.";
             return true;
         }
 
-        // --------------------------------------------------------------------
-        // 5. HÀM GỬI MAIL (CODE CŨ CỦA BẠN - ĐÃ FIX LẠI THAM SỐ CHO KHỚP)
-        // --------------------------------------------------------------------
+        // --- 5. HÀM GỬI MAIL (Giữ nguyên) ---
         private void GuiEmailXacNhan(string emailNhan, int maDon, string tenKhach, List<CartItem> cart)
         {
             try 
             {
-                var fromAddress = new MailAddress("sangchuadao123@gmail.com", "WebBanTraSua"); // Nhớ @gmail.com
-                const string fromPassword = "ghwn wefe ofde ymlp"; // App Password cũ của bạn
+                var fromAddress = new MailAddress("sangchuadao123@gmail.com", "WebBanTraSua");
+                const string fromPassword = "ghwn wefe ofde ymlp"; 
                 
                 var toAddress = new MailAddress(emailNhan, tenKhach);
                 const string subject = "Xác nhận đơn hàng từ N16 MilkTea";
@@ -176,8 +188,6 @@ namespace N16_MilkTea.Controllers
                 double tongTien = 0;
                 foreach(var item in cart)
                 {
-                    // Logic cũ không có Toppings list trong CartItem, nên mình bỏ đoạn string join toppings đi để tránh lỗi
-                    // Nếu bạn muốn hiện topping, CartItem phải có List Toppings
                     body += $"<tr><td>{item.ProductName}</td><td style='text-align:center'>{item.Quantity}</td><td>{item.Total:N0} đ</td></tr>";
                     tongTien += item.Total;
                 }
@@ -200,12 +210,11 @@ namespace N16_MilkTea.Controllers
                     IsBodyHtml = true
                 })
                 {
-                    smtp.Send(message); // Dùng hàm Send đồng bộ như code cũ
+                    smtp.Send(message);
                 }
             }
             catch (Exception ex)
             {
-                // Ghi log để debug nếu cần
                 System.Diagnostics.Debug.WriteLine("Lỗi gửi mail: " + ex.Message);
             }
         }

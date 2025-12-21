@@ -127,30 +127,55 @@ namespace N16_MilkTea.Controllers
             return RedirectToAction("Index");
         }
 
-        // 4. Xử lý Voucher (HARDCODE)
+        // 4. Xử lý Voucher (Đã nâng cấp logic 1 lần/khách)
         [HttpPost]
-        public IActionResult ApplyVoucher(string code)
+        public async Task<IActionResult> ApplyVoucher(string code)
         {
-            var vouchers = new Dictionary<string, double>
+            // A. Kiểm tra đăng nhập
+            var maKhStr = HttpContext.Session.GetString("MaKh");
+            if (maKhStr == null)
             {
-                { "MILKTEA50", 50000 },
-                { "CHAOMUNG", 10000 },
-                { "FREESHIP", 15000 }
-            };
-
-            if (code != null && vouchers.ContainsKey(code.ToUpper()))
-            {
-                double discount = vouchers[code.ToUpper()];
-                HttpContext.Session.SetObject("DiscountAmount", discount);
-                TempData["Message"] = $"Áp dụng mã {code} giảm {discount:N0}đ thành công!";
-            }
-            else
-            {
-                HttpContext.Session.SetObject("DiscountAmount", 0.0);
-                TempData["Error"] = "Mã giảm giá không tồn tại!";
+                return Json(new { success = false, message = "Bạn cần đăng nhập để dùng mã giảm giá!" });
             }
 
-            return RedirectToAction("Index");
+            int maKh = int.Parse(maKhStr);
+            code = code.ToUpper().Trim(); // Chuẩn hóa mã về chữ hoa
+
+            // B. LOGIC KIỂM TRA LỊCH SỬ (QUAN TRỌNG)
+            // Thêm điều kiện d.GhiChu != null để tránh lỗi với các đơn hàng cũ
+            bool daDung = await _context.DonHangs
+                .AnyAsync(d => d.MaKh == maKh && d.GhiChu != null && d.GhiChu.Contains(code));
+
+            if (daDung)
+            {
+                return Json(new { success = false, message = "Bạn đã sử dụng mã này rồi! Mỗi khách chỉ được dùng 1 lần." });
+            }
+
+            // C. Cấu hình các mã giảm giá
+            // Mã 1: HELLON16 (Khớp với trang Khuyến mãi)
+            // Sửa logic: Giảm thẳng 50k cho khách mới (Dễ xử lý hơn % vì không cần tính tổng tiền lại)
+            if (code == "HELLON16" || code == "MILKTEA50") 
+            {
+                HttpContext.Session.SetString("VoucherCode", code);
+                HttpContext.Session.SetString("DiscountAmount", "50000"); // Giảm 50k
+                return Json(new { success = true, message = "Áp dụng mã thành công! Giảm 50.000đ", discount = 50000 });
+            }
+
+            // Mã 2: T3VUI (Mua 1 tặng 1 -> Tương đương giảm khoảng 30k - giá trung bình 1 ly)
+            if (code == "T3VUI")
+            {
+                // Kiểm tra có phải thứ 3 không? (Nếu muốn demo luôn thì comment dòng if này lại)
+                if (DateTime.Now.DayOfWeek != DayOfWeek.Tuesday)
+                {
+                     // return Json(new { success = false, message = "Mã này chỉ áp dụng vào thứ 3 hàng tuần!" });
+                }
+
+                HttpContext.Session.SetString("VoucherCode", code);
+                HttpContext.Session.SetString("DiscountAmount", "30000"); // Giảm 30k (coi như tặng 1 ly)
+                return Json(new { success = true, message = "Áp dụng mã Mua 1 Tặng 1 thành công! (Giảm 30.000đ)", discount = 30000 });
+            }
+
+            return Json(new { success = false, message = "Mã giảm giá không tồn tại!" });
         }
     }
 }

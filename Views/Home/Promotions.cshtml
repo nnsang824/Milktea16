@@ -1,6 +1,4 @@
-@{
-    ViewData["Title"] = "Khuyến mãi";
-}
+@{ ViewData["Title"] = "Khuyến mãi"; }
 
 <div class="container py-5">
     <div class="text-center mb-5">
@@ -13,23 +11,24 @@
             <div class="card bg-warning text-dark border-0 shadow h-100">
                 <div class="card-body p-5 d-flex flex-column justify-content-center text-center">
                     <h3 class="fw-bold display-6">MUA 1 TẶNG 1</h3>
-                    <p class="fs-5">Áp dụng cho dòng Trà trái cây vào thứ 3 hàng tuần</p>
-                    <div class="bg-white text-dark p-2 rounded fw-bold mx-auto mt-3" style="width: 200px; border-style: dashed;">
+                    <p class="fs-5">Tương đương giảm trực tiếp <strong>30.000đ</strong></p>
+                    <div class="bg-white text-dark p-2 rounded fw-bold mx-auto mt-3 border-dashed" style="width: 200px; border: 2px dashed #000;">
                         CODE: T3VUI
                     </div>
-                    <small class="mt-2">HSD: 30/12/2025</small>
+                    <small class="mt-2">Áp dụng cho mọi đơn hàng</small>
                 </div>
             </div>
         </div>
+        
         <div class="col-md-6">
             <div class="card bg-success text-white border-0 shadow h-100">
                 <div class="card-body p-5 d-flex flex-column justify-content-center text-center">
-                    <h3 class="fw-bold display-6">GIẢM 20%</h3>
-                    <p class="fs-5">Cho đơn hàng đầu tiên đăng ký thành viên</p>
-                    <div class="bg-white text-dark p-2 rounded fw-bold mx-auto mt-3" style="width: 200px; border-style: dashed;">
+                    <h3 class="fw-bold display-6">GIẢM 50.000Đ</h3>
+                    <p class="fs-5">Dành tặng cho khách hàng mới</p>
+                    <div class="bg-white text-dark p-2 rounded fw-bold mx-auto mt-3" style="width: 200px; border: 2px dashed #000;">
                         CODE: HELLON16
                     </div>
-                    <small class="mt-2">Chỉ áp dụng cho khách hàng mới</small>
+                    <small class="mt-2">Mỗi khách chỉ được sử dụng 1 lần duy nhất</small>
                 </div>
             </div>
         </div>
@@ -40,6 +39,6 @@
     </div>
 
     <div class="text-center mt-5">
-        <a asp-action="Menu" class="btn btn-primary btn-lg px-5 rounded-pill">Đặt món ngay để dùng mã</a>
+        <a asp-controller="Home" asp-action="Menu" class="btn btn-primary btn-lg px-5 rounded-pill shadow">Đặt món ngay để dùng mã</a>
     </div>
 </div>
